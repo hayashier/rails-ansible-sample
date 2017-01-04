@@ -1,0 +1,119 @@
+# {{ansible_managed }}
+
+# For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+user  nginx;
+worker_processes  {{ nginx_woker_processes }};
+
+error_log  /var/log/nginx/error.log;
+#error_log  /var/log/nginx/error.log  notice;
+#error_log  /var/log/nginx/error.log  info;
+
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+	error_log  /home/ec2-user/logs/nginx.error.log; #/var/www/micoly-admin/current/log/nginx.error.log; 
+	access_log /home/ec2-user/logs/nginx.access.log; #/var/www/micoly-admin/current/log/nginx.access.log; 
+    #
+    server_tokens {{ nginx_server_tokens }};
+    #
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    # Load modular configuration files from the /etc/nginx/conf.d directory.
+    # See http://nginx.org/en/docs/ngx_core_module.html#include
+    # for more information.
+    include /etc/nginx/conf.d/*.conf;
+{% for include in nginx_includes %}
+    include {{ include }};
+{% endfor %}
+
+    index   index.html index.htm;
+
+# max body size
+client_max_body_size 2G;
+upstream app_server {
+	# for UNIX domain socket setups
+	server unix:/var/www/micoly-admin/current/tmp/sockets/.unicorn.sock fail_timeout=0; 
+}
+	
+   server {
+		listen 80;
+		server_name 54.64.82.83;
+		# nginx so increasing this is generally safe...
+		keepalive_timeout 5;
+		# path for static files
+		root /var/www/micoly-admin/current/public; 
+		# page cache loading
+		try_files $uri/index.html $uri.html $uri @app;
+		location @app {
+			# HTTP headers
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header Host $http_host;
+			proxy_redirect off;
+			proxy_pass http://app_server;
+		}     
+		# Rails error pages
+		error_page 500 502 503 504 /500.html;
+		location = /500.html {
+			root /var/www/micoly-admin/current/public; 
+		}
+    }
+
+
+    # another virtual host using mix of IP-, name-, and port-based configuration
+    #
+    #server {
+    #    listen       8000;
+    #    listen       somename:8080;
+    #    server_name  somename  alias  another.alias;
+    #    root         html;
+
+    #    location / {
+    #    }
+    #}
+
+
+    # HTTPS server
+    #
+    #server {
+    #    listen       443;
+    #    server_name  localhost;
+    #    root         html;
+
+    #    ssl                  on;
+    #    ssl_certificate      cert.pem;
+    #    ssl_certificate_key  cert.key;
+
+    #    ssl_session_timeout  5m;
+
+    #    ssl_protocols  SSLv2 SSLv3 TLSv1;
+    #    ssl_ciphers  HIGH:!aNULL:!MD5;
+    #    ssl_prefer_server_ciphers   on;
+
+    #    location / {
+    #    }
+    #}
+
+}

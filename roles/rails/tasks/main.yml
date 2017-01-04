@@ -1,0 +1,22 @@
+---
+- name: Install mysql-devel
+  yum: name={{ item }} state=latest
+  with_items:
+    - mysql-devel
+    - sqlite-devel
+    - gcc-c++
+
+- name: Install dependencies for nokogiri
+  yum: name={{ item }} state=latest
+  with_items:
+    - patch
+
+- name: Install bundler
+  become_user: "{{ rbenv_user }}"
+  gem: name={{ item }} user_install=False
+  with_items:
+    - bundler
+
+- name: Create deploy directory
+  file: path={{ railsenv_deploy_dir }} state=directory owner={{ railsenv_deploy_user }} group={{ railsenv_deploy_group }} mode=0755
+
