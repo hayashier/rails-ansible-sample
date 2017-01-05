@@ -4,5 +4,5 @@
 Execute following command.
 
 ```
-ansible-playbook sample.development.yml
+ansible-playbook test.development.yml
 ```
